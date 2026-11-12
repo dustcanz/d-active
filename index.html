@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <meta name="description" content="Discord Rich Presence 用の表示設定を作成・プレビューする個人用ツール">
+  <title>Presence Studio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #1a1d24;
+      --panel-2: #20242d;
+      --line: #303642;
+      --text: #f1f3f8;
+      --muted: #9aa3b2;
+      --accent: #8c9eff;
+      --accent-2: #7186ff;
+      --danger: #ff7777;
+      --ok: #8ad9ad;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% -20%, #242a39 0, var(--bg) 52%);
+      color: var(--text);
+    }
+    .wrap { width: min(100% - 28px, 980px); margin: 0 auto; padding: 28px 0 52px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(145deg, #8899ff, #5967c8); color: white; font-weight: 800; font-size: 20px; box-shadow: 0 8px 24px #5967c833; }
+    h1 { font-size: clamp(19px, 4vw, 25px); margin: 0; letter-spacing: .01em; }
+    .subhead { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .local-tag { white-space: nowrap; border: 1px solid #3d4657; border-radius: 999px; color: #c4cde0; padding: 6px 10px; font-size: 11px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .88fr); gap: 18px; align-items: start; }
+    .panel { background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 17px; padding: 19px; box-shadow: 0 14px 44px #00000020; }
+    .panel h2 { margin: 0 0 16px; font-size: 15px; font-weight: 700; }
+    .field { margin: 0 0 15px; }
+    label { display: block; color: #d8dce6; font-size: 12px; margin-bottom: 7px; font-weight: 650; }
+    input, textarea {
+      display: block; width: 100%; min-width: 0; border: 1px solid #3a414e; border-radius: 10px;
+      background: #12151b; color: var(--text); padding: 12px 13px; font: inherit; font-size: 14px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    textarea { min-height: 68px; resize: vertical; }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #8c9eff20; }
+    input::placeholder, textarea::placeholder { color: #687181; }
+    .hint { color: var(--muted); font-size: 11px; line-height: 1.55; margin-top: 6px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .preview-panel { position: sticky; top: 16px; }
+    .preview-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+    .preview-label h2 { margin: 0; }
+    .live-dot { color: var(--ok); font-size: 11px; display: inline-flex; gap: 6px; align-items: center; }
+    .live-dot::before { content: ""; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+    .discord-card { background: #23262f; border-radius: 12px; padding: 15px; border: 1px solid #373c47; }
+    .discord-kicker { color: #b3bac8; font-size: 11px; font-weight: 750; letter-spacing: .07em; margin-bottom: 12px; }
+    .activity { display: flex; gap: 13px; align-items: flex-start; }
+    .activity-image { width: 76px; height: 76px; flex: 0 0 76px; border-radius: 12px; background: #414957; object-fit: cover; display: block; }
+    .activity-fallback { display: grid; place-items: center; color: #dce2ff; font-size: 27px; font-weight: 800; }
+    .activity-copy { min-width: 0; flex: 1; padding-top: 1px; }
+    .playing { color: #b4bbc9; font-size: 11px; margin-bottom: 4px; }
+    .app-name { font-size: 14px; line-height: 1.4; font-weight: 750; overflow-wrap: anywhere; }
+    .detail, .state { font-size: 12px; color: #c9ced8; line-height: 1.5; overflow-wrap: anywhere; margin-top: 4px; }
+    .state { color: #9ea7b7; }
+    .image-caption { min-height: 17px; font-size: 10px; color: #8e98a9; margin-top: 11px; overflow-wrap: anywhere; }
+    .preview-note { font-size: 11px; line-height: 1.65; color: var(--muted); margin: 13px 1px 0; }
+    .music-box { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+    .music-box h3 { font-size: 13px; margin: 0 0 5px; }
+    .music-box p { color: var(--muted); font-size: 11px; line-height: 1.55; margin: 0 0 12px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    button, .file-button {
+      border: 1px solid #414a5a; background: #252b37; color: var(--text); padding: 10px 13px; border-radius: 10px;
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 40px;
+    }
+    button.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+    button:hover, .file-button:hover { filter: brightness(1.12); }
+    button:active, .file-button:active { transform: translateY(1px); }
+    button.danger { color: #ffaaaa; }
+    input[type=file] { display: none; }
+    .save-state { min-height: 16px; margin-top: 10px; color: var(--ok); font-size: 11px; }
+    .notice { margin-top: 18px; border: 1px solid #64512d; background: #2a2419; border-radius: 12px; padding: 13px 14px; color: #e6d3a7; font-size: 11px; line-height: 1.7; }
+    .notice strong { color: #fff0c8; }
+    footer { color: #778192; font-size: 10px; line-height: 1.6; text-align: center; margin-top: 24px; }
+    @media (max-width: 720px) {
+      .wrap { width: min(100% - 22px, 520px); padding-top: 19px; }
+      header { margin-bottom: 17px; }
+      .layout { grid-template-columns: 1fr; }
+      .preview-panel { position: static; grid-row: 1; }
+      .panel { padding: 16px; }
+      .activity-image { width: 68px; height: 68px; flex-basis: 68px; }
+      .local-tag { font-size: 10px; padding: 5px 8px; }
+    }
+    @media (max-width: 380px) {
+      .split { grid-template-columns: 1fr; gap: 0; }
+      .local-tag { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div>
+          <h1>Presence Studio</h1>
+          <div class="subhead">Discord Rich Presence 設定・プレビュー</div>
+        </div>
+      </div>
+      <div class="local-tag">端末内に保存</div>
+    </header>
+
+    <div class="layout">
+      <section class="panel preview-panel" aria-labelledby="preview-heading">
+        <div class="preview-label">
+          <h2 id="preview-heading">プロフィール表示プレビュー</h2>
+          <span class="live-dot">PREVIEW</span>
+        </div>
+        <div class="discord-card">
+          <div class="discord-kicker">アクティビティ</div>
+          <div class="activity">
+            <div id="imageFallback" class="activity-image activity-fallback" aria-hidden="true">P</div>
+            <img id="previewImage" class="activity-image" alt="アクティビティ画像" hidden>
+            <div class="activity-copy">
+              <div class="playing">プレイ中</div>
+              <div id="previewName" class="app-name">My Activity</div>
+              <div id="previewDetails" class="detail">詳細テキスト</div>
+              <div id="previewState" class="state">ステータステキスト</div>
+            </div>
+          </div>
+          <div id="previewImageAlt" class="image-caption"></div>
+        </div>
+        <p class="preview-note">これは表示イメージです。Discordの実際のプロフィール画面とは、余白・文字切れ・画像サイズなどが異なる場合があります。</p>
+
+        <div class="music-box">
+          <h3>音楽情報（手動入力）</h3>
+          <p>曲名・アーティスト名を入力し、詳細と状態へ反映できます。スマホ上の他アプリの再生情報を、このWebページだけで自動取得することはできません。</p>
+          <div class="field">
+            <label for="musicTitle">曲名</label>
+            <input id="musicTitle" type="text" maxlength="120" placeholder="曲名を入力">
+          </div>
+          <div class="field">
+            <label for="musicArtist">アーティスト</label>
+            <input id="musicArtist" type="text" maxlength="120" placeholder="アーティスト名を入力">
+          </div>
+          <button id="applyMusic" type="button">詳細・状態に反映</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">表示設定</h2>
+        <div class="field">
+          <label for="appName">アクティビティ名</label>
+          <input id="appName" type="text" maxlength="128" placeholder="例：Now Playing" autocomplete="off">
+          <div class="hint">Discord上で「プレイ中」の後に表示する名前です。</div>
+        </div>
+        <div class="field">
+          <label for="details">詳細（Details）</label>
+          <input id="details" type="text" maxlength="128" placeholder="例：お気に入りの曲を再生中" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="state">状態（State）</label>
+          <input id="state" type="text" maxlength="128" placeholder="例：Artist Name" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="imageUrl">画像URL</label>
+          <input id="imageUrl" type="url" inputmode="url" placeholder="https://example.com/image.png" autocomplete="url">
+          <div class="hint">https:// または http:// で始まる画像の直リンクを指定してください。画像ファイルのアップロードには対応していません。</div>
+        </div>
+        <div class="field">
+          <label for="imageAlt">画像の補足テキスト（任意）</label>
+          <input id="imageAlt" type="text" maxlength="80" placeholder="例：アルバムジャケット">
+        </div>
+
+        <div class="buttons">
+          <button class="primary" id="exportButton" type="button">設定をJSON出力</button>
+          <label class="file-button" for="importFile">JSONを読み込む</label>
+          <input id="importFile" type="file" accept="application/json,.json">
+          <button id="copyButton" type="button">JSONをコピー</button>
+          <button class="danger" id="resetButton" type="button">リセット</button>
+        </div>
+        <div id="saveState" class="save-state" role="status" aria-live="polite">設定はこのブラウザに自動保存されます。</div>
+
+        <div class="notice">
+          <strong>Discordへの反映について</strong><br>
+          このGitHub Pages版は設定・プレビュー・JSON出力を行うフロントエンドです。WebページからDiscordのプロフィールへ直接Rich Presenceを送信する機能はありません。実際の反映にはDiscord Social SDKを組み込んだAndroidアプリなど、DiscordクライアントとRPC通信するネイティブ側の処理が別途必要です。
+        </div>
+      </section>
+    </div>
+    <footer>設定値はブラウザの localStorage に保存されます。サーバーへの送信やDiscordログインは行いません。</footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "presence-studio-config-v1";
+      const ids = ["appName", "details", "state", "imageUrl", "imageAlt", "musicTitle", "musicArtist"];
+      const fields = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+      const preview = {
+        name: document.getElementById("previewName"),
+        details: document.getElementById("previewDetails"),
+        state: document.getElementById("previewState"),
+        image: document.getElementById("previewImage"),
+        fallback: document.getElementById("imageFallback"),
+        imageAlt: document.getElementById("previewImageAlt"),
+        saveState: document.getElementById("saveState")
+      };
+
+      const defaults = {
+        appName: "My Activity",
+        details: "詳細テキスト",
+        state: "ステータステキスト",
+        imageUrl: "",
+        imageAlt: "",
+        musicTitle: "",
+        musicArtist: ""
+      };
+
+      function readForm() {
+        return Object.fromEntries(ids.map(id => [id, fields[id].value.trim()]));
+      }
+
+      function safeImageUrl(value) {
+        if (!value) return "";
+        try {
+          const url = new URL(value);
+          return (url.protocol === "https:" || url.protocol === "http:") ? url.href : "";
+        } catch {
+          return "";
+        }
+      }
+
+      function updatePreview() {
+        const data = readForm();
+        preview.name.textContent = data.appName || "（アクティビティ名）";
+        preview.details.textContent = data.details || "";
+        preview.state.textContent = data.state || "";
+        preview.details.hidden = !data.details;
+        preview.state.hidden = !data.state;
+        preview.imageAlt.textContent = data.imageAlt;
+
+        const url = safeImageUrl(data.imageUrl);
+        if (!url) {
+          preview.image.hidden = true;
+          preview.fallback.hidden = false;
+          preview.fallback.textContent = (data.appName || "P").slice(0, 1).toUpperCase();
+          return;
+        }
+        preview.image.onload = () => {
+          preview.image.hidden = false;
+          preview.fallback.hidden = true;
+        };
+        preview.image.onerror = () => {
+          preview.image.hidden = true;
+          preview.fallback.hidden = false;
+          preview.fallback.textContent = "!";
+          preview.imageAlt.textContent = "画像を読み込めませんでした。URLと公開設定を確認してください。";
+        };
+        preview.image.src = url;
+        preview.image.alt = data.imageAlt || "アクティビティ画像";
+      }
+
+      let saveTimer;
+      function scheduleSave() {
+        updatePreview();
+        preview.saveState.textContent = "保存中…";
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(readForm()));
+            preview.saveState.textContent = "保存しました（このブラウザ内）";
+          } catch (error) {
+            preview.saveState.textContent = "保存できませんでした。ブラウザのストレージ設定を確認してください。";
+          }
+        }, 250);
+      }
+
+      function applyData(data) {
+        for (const id of ids) {
+          fields[id].value = typeof data?.[id] === "string" ? data[id] : defaults[id];
+        }
+        scheduleSave();
+      }
+
+      function exportJson() {
+        return JSON.stringify({
+          format: "presence-studio-config",
+          version: 1,
+          ...readForm()
+        }, null, 2);
+      }
+
+      ids.forEach(id => fields[id].addEventListener("input", scheduleSave));
+
+      document.getElementById("applyMusic").addEventListener("click", () => {
+        const title = fields.musicTitle.value.trim();
+        const artist = fields.musicArtist.value.trim();
+        if (!title && !artist) {
+          preview.saveState.textContent = "曲名またはアーティスト名を入力してください。";
+          return;
+        }
+        fields.details.value = title ? `♫ ${title}` : "♫ 再生中";
+        fields.state.value = artist;
+        scheduleSave();
+      });
+
+      document.getElementById("exportButton").addEventListener("click", () => {
+        const blob = new Blob([exportJson()], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "presence-config.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        preview.saveState.textContent = "JSONを書き出しました。";
+      });
+
+      document.getElementById("copyButton").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(exportJson());
+          preview.saveState.textContent = "JSONをクリップボードにコピーしました。";
+        } catch {
+          preview.saveState.textContent = "コピーできませんでした。JSON出力をご利用ください。";
+        }
+      });
+
+      document.getElementById("importFile").addEventListener("change", async event => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+          const parsed = JSON.parse(await file.text());
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
+          applyData(parsed);
+          preview.saveState.textContent = "JSONを読み込みました。";
+        } catch {
+          preview.saveState.textContent = "JSONを読み込めませんでした。ファイル形式を確認してください。";
+        } finally {
+          event.target.value = "";
+        }
+      });
+
+      document.getElementById("resetButton").addEventListener("click", () => {
+        applyData(defaults);
+        preview.saveState.textContent = "初期設定に戻しました。";
+      });
+
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        applyData(saved ? JSON.parse(saved) : defaults);
+      } catch {
+        applyData(defaults);
+        preview.saveState.textContent = "保存済み設定を読み込めなかったため、初期設定を表示しています。";
+      }
+    })();
+  </script>
+</body>
+</html>
